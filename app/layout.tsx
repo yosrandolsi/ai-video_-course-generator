@@ -25,7 +25,7 @@ export default function RootLayout({
        className={AppFont.className} 
       >
         <Provider>{children}</Provider>
-        {children}
+        
       </body>
     </html>
     </ClerkProvider>
