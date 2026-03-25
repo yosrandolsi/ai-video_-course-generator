@@ -9,7 +9,7 @@ import CourseList from "./_components/CourseList";
 export default function Home() {
   return (
     <div >
-     <Header />
+    
      <Hero />
      <CourseList />
      <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] bg-purple-400/20 blur-[120px] rounded-full" />

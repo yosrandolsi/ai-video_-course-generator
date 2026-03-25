@@ -22,12 +22,13 @@ import {
 
 import { Loader2, Send } from "lucide-react";
 import { QUICK_VIDEO_SUGGESTIONS } from "@/data/constant";
+import { useRouter } from "next/navigation";
 
 function Hero() {
   const [userInput, setUserInput] = useState("");
   const [type, setType] = useState("full-course");
   const [loading, setLoading] = useState(false);
-
+  const router=useRouter();
   const { user } = useUser();
   const courseId = crypto.randomUUID(); // ✅ correct
   const GenerateCourseLayout = async () => {
@@ -54,7 +55,8 @@ const result = await axios.post("/api/generate-course-layout", {
         toast.success("Course generated successfully!");
         //navigate to course editor page
 
-        
+
+        router.push(`/course/${courseId}`);
       }
     } catch (err: any) {
       console.error("Axios error:", err);
