@@ -1,11 +1,61 @@
-import { db } from "@/config/db";
-import { coursesTable } from "@/config/schema";
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/config/db";
+import { coursesTable, chaptersTable, chapterContentSlides } from "@/config/schema";
 import { eq } from "drizzle-orm";
+
 export async function GET(req: NextRequest) {
-    const courseId = req.nextUrl.searchParams.get('courseId');
-    const courses = await db.select().from(coursesTable).where(eq(coursesTable.courseId,courseId as string));
+  try {
+    const { searchParams } = new URL(req.url);
+    const courseId = searchParams.get("courseId");
 
-    return NextResponse.json(courses[0]);
+    if (!courseId) {
+      return NextResponse.json({ error: "Missing courseId" }, { status: 400 });
+    }
 
+    // ✅ Fetch course
+    const courseResult = await db
+      .select()
+      .from(coursesTable)
+      .where(eq(coursesTable.courseId, courseId));
+
+    if (!courseResult || courseResult.length === 0) {
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    }
+
+    const course = courseResult[0];
+
+    // ✅ Fetch chapters
+    const chapters = await db
+      .select()
+      .from(chaptersTable)
+      .where(eq(chaptersTable.courseId, courseId));
+
+    // ✅ Fetch chapter content slides
+    const slides = await db
+      .select()
+      .from(chapterContentSlides)
+      .where(eq(chapterContentSlides.courseId, courseId));
+
+    // ✅ Attacher les slides à chaque chapter
+    const chaptersWithSlides = chapters.map((chapter) => ({
+      ...chapter,
+      chapterContentSlides: slides.filter(
+        (slide) => slide.chapterId === chapter.chapterId
+      ),
+    }));
+
+    // ✅ Retourner tout ensemble
+    return NextResponse.json({
+      ...course,
+      chapters: chaptersWithSlides,
+      chapterContentSlides: slides,
+    });
+
+  } catch (err: any) {
+    console.error("GET /api/course error:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch course", details: err.message },
+      { status: 500 }
+    );
+  }
 }
