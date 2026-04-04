@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import {DM_Sans} from "next/font/google";
 import "./globals.css";
 
-
+import { ClerkProvider } from '@clerk/nextjs'
+import Provider from "./provider";
+import { Toast } from "radix-ui";
+import { Toaster } from "@/components/ui/sonner";
 const AppFont = DM_Sans({
   subsets: ['latin']
 
@@ -18,12 +21,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    <ClerkProvider>
     <html lang="en">
       <body
        className={AppFont.className} 
       >
-        {children}
+        <Provider>{children}</Provider>
+        <Toaster position="top-center"  richColors/>
       </body>
     </html>
+    </ClerkProvider>
   );
 }
