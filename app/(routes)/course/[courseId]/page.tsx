@@ -1,4 +1,3 @@
-
 "use client"
 import React, { useEffect, useState } from 'react'
 import CourseInfoCard from './_components/CourseInfoCard'
@@ -30,7 +29,8 @@ function CoursePreview() {
       setCourseDetail(result.data);
       toast.success("Course details loaded!", { id: loadingToast });
 
-      if (result?.data?.chapterContentSlides?.length === 0) {
+      // ✅ Si aucun slide généré, créer les vidéos
+      if (!result?.data?.chapters?.some((ch: any) => ch.chapterContentSlides?.length > 0)) {
         GenerateVideoContent(result?.data);
       }
 
@@ -40,6 +40,32 @@ function CoursePreview() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const GenerateVideoContent = async (course: Course) => {
+    for (let i = 0; i < course?.courseLayout?.chapters.length; i++) {
+      const chapter = course?.courseLayout?.chapters[i];
+      if (!chapter) continue;
+
+      const toastLoading = toast.loading(`Generating video content for chapter ${i + 1}`);
+
+      try {
+        const result = await axios.post('/api/generate-video-content', {
+          chapter: chapter,
+          courseId: course.courseId,
+        });
+
+        console.log(`✅ Chapter ${i + 1} slides:`, result.data);
+        toast.success(`Video content generated for chapter ${i + 1}`, { id: toastLoading });
+
+      } catch (err: any) {
+        console.error("❌ API ERROR:", err?.response?.data || err.message);
+        toast.error(`Error generating chapter ${i + 1}`, { id: toastLoading });
+      }
+    }
+
+    // ✅ Recharger le cours après génération pour avoir les slides
+    await GetCourseDetail();
   };
 
   if (loading) {
@@ -65,32 +91,6 @@ function CoursePreview() {
     );
   }
 
- const GenerateVideoContent = async (course: Course) => {
-  for (let i = 0; i < course?.courseLayout?.chapters.length; i++) {
-    const chapter = course?.courseLayout?.chapters[i];
-    if (!chapter) continue;
-
-    const toastLoading = toast.loading(`Generating video content for chapter ${i + 1}`);
-
-    try {
-      const result = await axios.post('/api/generate-video-content', {
-        chapter: chapter,
-        courseId: course.courseId,
-      });
-
-      console.log(`✅ Chapter ${i + 1} slides:`, result.data);
-      toast.success(`Video content generated for chapter ${i + 1}`, { id: toastLoading });
-
-    } catch (err: any) {
-      console.error("❌ API ERROR:", err?.response?.data || err.message);
-      toast.error(`Error generating chapter ${i + 1}`, { id: toastLoading });
-    }
-  }
-
-  // ✅ Recharger le cours après génération pour avoir les slides
-  await GetCourseDetail();
-};
-
   return (
     <div className='flex flex-col items-center w-full gap-6 p-4'>
       <CourseInfoCard course={courseDetail} />
@@ -99,4 +99,4 @@ function CoursePreview() {
   );
 }
 
-export default CoursePreview; 
+export default CoursePreview;
