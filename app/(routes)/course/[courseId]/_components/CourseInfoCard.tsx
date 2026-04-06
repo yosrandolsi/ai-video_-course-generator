@@ -1,14 +1,57 @@
 import { Course } from '@/type/CourseType';
 import { BookOpen, ChartNoAxesColumnIncreasing, Sparkles } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState,useMemo } from 'react';
 import { Player } from '@remotion/player';
-import ChapterVideo from './ChapterVideo';
 
+import {getAudioData} from '@remotion/media-utils';
+import { CourseComposition } from './ChapterVideo';
 type Props = {
   course?: Course;
 };
 
 function CourseInfoCard({ course }: Props) {
+  const fps= 30;
+  const slides=course?.chapterContentSlides?? [];
+const [durationsBySlidesId, setDurationsBySlidesId] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    let cancelled=false;
+    const run =async()=>{
+      if(!slides) return;
+      const entries=await Promise.all(slides.map(async(slide)=>{
+        const audioData=await getAudioData(slide?.audioFileUrl);
+        const audioSec=audioData?.durationInSeconds;
+        const  frames=Math.max(1,Math.ceil(audioSec*fps));
+        return [slide.slideId,frames] as const;
+        
+      }
+      ));
+      if(!cancelled){
+        setDurationsBySlidesId(Object.fromEntries(entries));
+      }
+    };
+    run();
+    return()=>{
+      cancelled=true;
+    };
+
+  }
+  , [slides,fps]);
+  console.log("durationsBySlidesId",durationsBySlidesId);
+ const durationInFrames = useMemo(() => {
+  if (!durationsBySlidesId) return 0;
+
+  return slides.reduce((sum, slide) => {
+    const frames =
+      durationsBySlidesId[slide.slideId] ?? fps * 6;
+
+    return sum + frames;
+  }, 0);
+}, [durationsBySlidesId, slides, fps]);
+
+if(!durationsBySlidesId){
+  return<div> Loading...</div>
+}
   if (!course) {
     return (
       <div className="p-6 text-white rounded-2xl shadow-xl bg-gray-800">
@@ -72,20 +115,21 @@ function CourseInfoCard({ course }: Props) {
             overflow: "hidden",
           }}
         >
-          <Player
-            component={ChapterVideo}
-            durationInFrames={30}
-            compositionWidth={1280}
-            compositionHeight={720}
-            fps={30}
-            controls
-            style={{
-              width: '90%',
-              height: '220px',
-              borderRadius: '12px',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-            }}
-          />
+        <Player
+  component={CourseComposition}
+  inputProps={{ slides: slides as any, durationsBySlideId: durationsBySlidesId ?? {} }}
+  durationInFrames={durationInFrames && durationInFrames !== 0 ? durationInFrames : 30}
+  compositionWidth={1280}
+  compositionHeight={720}
+  fps={30}
+  controls
+  style={{
+    width: '90%',
+    height: '220px',
+    borderRadius: '12px',
+    border: '2px solid rgba(255, 255, 255, 0.3)',
+  }}
+/>
         </div>
       </div>
     </div>

@@ -1,15 +1,69 @@
 import { Course } from '@/type/CourseType';
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, CardContent } from "@/components/ui/card";
 import { Dot } from 'lucide-react';
 import { Player } from '@remotion/player';
-import ChapterVideo from './ChapterVideo';
+
+import { getAudioData } from '@remotion/media-utils';
+import { CourseComposition } from './ChapterVideo';
 
 type Props = {
-    course: Course | undefined;
+  course: Course | undefined;
 }
 
 function CourseChapters({ course }: Props) {
+
+  const fps = 30;
+
+  // ✅ stockage durée des slides
+  const [durationsBySlidesId, setDurationsBySlidesId] =
+    useState<Record<string, number> | null>(null);
+
+  // ✅ calcul global des durées (UNE SEULE FOIS)
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!course?.chapters) return;
+
+      const allSlides = course.chapters.flatMap(
+        (ch) => ch.chapterContentSlides ?? []
+      );
+
+      const entries = await Promise.all(
+        allSlides.map(async (slide) => {
+          const audio = await getAudioData(slide.audioFileUrl);
+          const frames = Math.max(1, Math.ceil(audio.durationInSeconds * fps));
+          return [slide.slideId, frames] as const;
+        })
+      );
+
+      if (!cancelled) {
+        setDurationsBySlidesId(Object.fromEntries(entries));
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [course, fps]);
+
+const getChapterDuration = (chapter: any) => {
+  if (!durationsBySlidesId) return 30;
+
+  const total = (chapter.chapterContentSlides ?? []).reduce(
+    (sum: number, slide: any) => {
+      const frames = durationsBySlidesId[slide.slideId] ?? fps * 6;
+      return sum + frames;
+    },
+    0
+  );
+
+  // ✅ IMPORTANT : jamais 0
+  return total > 0 ? total : 30;
+};
 
   // ✅ Si pas de chapters en DB, fallback sur courseLayout
   const hasDbChapters = course?.chapters && course.chapters.length > 0;
@@ -39,7 +93,7 @@ function CourseChapters({ course }: Props) {
         {hasDbChapters
           ? // ✅ Cas 1 : chapters viennent de la DB (avec slides)
             course?.chapters?.map((chapter, index) => {
-              // Croiser avec courseLayout pour récupérer subContent
+
               const layoutChapter = course?.courseLayout?.chapters?.find(
                 (c) => c.chapterId === chapter.chapterId
               );
@@ -52,7 +106,7 @@ function CourseChapters({ course }: Props) {
                   <CardContent style={{ padding: "16px 20px" }}>
                     <div className='flex gap-4'>
 
-                      {/* Colonne gauche : titre + bullets */}
+                      {/* LEFT */}
                       <div className='flex-1'>
                         <div className='flex gap-3 items-center mb-3'>
                           <div
@@ -77,7 +131,6 @@ function CourseChapters({ course }: Props) {
                           </span>
                         </div>
 
-                        {/* subContent depuis courseLayout */}
                         {layoutChapter?.subContent?.map((content, subIndex) => (
                           <div
                             key={`sub-${index}-${subIndex}`}
@@ -89,29 +142,30 @@ function CourseChapters({ course }: Props) {
                         ))}
                       </div>
 
-                      {/* Colonne droite : Player avec vraies slides */}
+                      {/* RIGHT */}
                       <div style={{ width: "40%", minWidth: "200px" }}>
                         <Player
-                          component={ChapterVideo}
-                          inputProps={{
-                            slides: chapter.chapterContentSlides ?? [],
-                          }}
-                          durationInFrames={
-                            chapter.chapterContentSlides?.length
-                              ? chapter.chapterContentSlides.length * 30
-                              : 30
-                          }
-                          compositionWidth={1280}
-                          compositionHeight={720}
-                          fps={30}
-                          controls
-                          style={{
-                            width: '100%',
-                            height: '150px',
-                            borderRadius: '10px',
-                            border: '1px solid #e5e7eb',
-                          }}
-                        />
+  component={CourseComposition}
+  inputProps={{
+    slides: (chapter.chapterContentSlides ?? []) as any,
+    durationsBySlideId: durationsBySlidesId ?? {},
+  }}
+  durationInFrames={
+    durationsBySlidesId
+      ? getChapterDuration(chapter)
+      : 30
+  }
+  compositionWidth={1280}
+  compositionHeight={720}
+  fps={30}
+  controls
+  style={{
+    width: '100%',
+    height: '150px',
+    borderRadius: '10px',
+    border: '1px solid #e5e7eb',
+  }}
+/>
                       </div>
 
                     </div>
@@ -120,7 +174,7 @@ function CourseChapters({ course }: Props) {
               );
             })
 
-          : // ✅ Cas 2 : fallback sur courseLayout (chapters pas encore générés)
+          : // ✅ fallback (inchangé)
             course?.courseLayout?.chapters?.map((chapter, index) => (
               <Card
                 key={`chapter-${index}`}
@@ -129,7 +183,6 @@ function CourseChapters({ course }: Props) {
                 <CardContent style={{ padding: "16px 20px" }}>
                   <div className='flex gap-4'>
 
-                    {/* Colonne gauche */}
                     <div className='flex-1'>
                       <div className='flex gap-3 items-center mb-3'>
                         <div
@@ -165,23 +218,22 @@ function CourseChapters({ course }: Props) {
                       ))}
                     </div>
 
-                    {/* Colonne droite : Player vide (pas encore de slides) */}
                     <div style={{ width: "40%", minWidth: "200px" }}>
-                      <Player
-                        component={ChapterVideo}
-                        inputProps={{ slides: [] }}
-                        durationInFrames={30}
-                        compositionWidth={1280}
-                        compositionHeight={720}
-                        fps={30}
-                        controls
-                        style={{
-                          width: '100%',
-                          height: '150px',
-                          borderRadius: '10px',
-                          border: '1px solid #e5e7eb',
-                        }}
-                      />
+                     <Player
+  component={CourseComposition}
+  inputProps={{ slides: [], durationsBySlideId: {} }}
+  durationInFrames={30}
+  compositionWidth={1280}
+  compositionHeight={720}
+  fps={30}
+  controls
+  style={{
+    width: '100%',
+    height: '150px',
+    borderRadius: '10px',
+    border: '1px solid #e5e7eb',
+  }}
+/>
                     </div>
 
                   </div>
