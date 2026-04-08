@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/config/db";
 import { coursesTable, chaptersTable, chapterContentSlides } from "@/config/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const courseId = searchParams.get("courseId");
-
-    if (!courseId) {
-      return NextResponse.json({ error: "Missing courseId" }, { status: 400 });
-    }
+    const user = await currentUser();
+  if (!courseId) {
+  const userCourses = await db
+    .select()
+    .from(coursesTable)
+    .where(eq(coursesTable.userId, user?.primaryEmailAddress?.emailAddress as string))
+    .orderBy(desc(coursesTable.id));
+  return NextResponse.json(userCourses);
+}
 
     // ✅ Fetch course
     const courseResult = await db
