@@ -28,9 +28,10 @@ function Hero() {
   const [userInput, setUserInput] = useState("");
   const [type, setType] = useState("full-course");
   const [loading, setLoading] = useState(false);
-  const router=useRouter();
+  const router = useRouter();
   const { user } = useUser();
-  const courseId = crypto.randomUUID(); // ✅ correct
+  const courseId = crypto.randomUUID();
+
   const GenerateCourseLayout = async () => {
     if (!user) {
       toast.error("Please sign in to generate courses");
@@ -41,43 +42,46 @@ function Hero() {
     const toastId = toast.loading("Generating your course layout...");
 
     try {
-const result = await axios.post("/api/generate-course-layout", { 
-  userInput, 
-  type, 
-  courseId 
-});
-
+      const result = await axios.post("/api/generate-course-layout", {
+        userInput,
+        type,
+        courseId
+      });
 
       if (result.data.error) {
         toast.error(result.data.error);
       } else {
         console.log("Course generated:", result.data.data);
         toast.success("Course generated successfully!");
-        //navigate to course editor page
-
-
         router.push(`/course/${courseId}`);
       }
+
     } catch (err: any) {
       console.error("Axios error:", err);
-      toast.error(err.message || "Server error");
+
+      const msg =
+        err?.response?.data?.msg ||
+        err?.response?.data?.error ||
+        "Server error";
+
+      toast.error(msg);
     } finally {
       setLoading(false);
       toast.dismiss(toastId);
-      toast.success("Course generation completed! Check console for details.")}
+    }
   };
 
   return (
     <div className="px-4">
-      {/* Title Section */}
       <div className="flex flex-col items-center mt-20 text-center">
         <h2 className="text-3xl font-bold">
           Learn Smarter with <span className="text-primary">AI Video Courses</span>
         </h2>
-        <p className="text-gray-500 mt-3 text-xl">Turn Any Topic into a Complete Course</p>
+        <p className="text-gray-500 mt-3 text-xl">
+          Turn Any Topic into a Complete Course
+        </p>
       </div>
 
-      {/* Input Section */}
       <div className="grid w-full max-w-xl gap-6 mx-auto mt-8 bg-white z-10 relative">
         <InputGroup>
           <InputGroupTextarea
@@ -96,7 +100,9 @@ const result = await axios.post("/api/generate-course-layout", {
               <SelectContent>
                 <SelectGroup>
                   <SelectItem value="full-course">Full Course</SelectItem>
-                  <SelectItem value="quick-explain-video">Quick Explain Video</SelectItem>
+                  <SelectItem value="quick-explain-video">
+                    Quick Explain Video
+                  </SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -109,7 +115,11 @@ const result = await axios.post("/api/generate-course-layout", {
                 onClick={GenerateCourseLayout}
                 disabled={loading}
               >
-                {loading ? <Loader2 className="animate-spin" /> : <Send size={18} />}
+                {loading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Send size={18} />
+                )}
               </InputGroupButton>
             ) : (
               <SignInButton mode="modal">
@@ -117,7 +127,9 @@ const result = await axios.post("/api/generate-course-layout", {
                   className="ml-auto"
                   size="icon-sm"
                   variant="default"
-                  onClick={() => toast.error("Please sign in to generate courses")}
+                  onClick={() =>
+                    toast.error("Please sign in to generate courses")
+                  }
                 >
                   <Send size={18} />
                 </InputGroupButton>
@@ -127,7 +139,6 @@ const result = await axios.post("/api/generate-course-layout", {
         </InputGroup>
       </div>
 
-      {/* Quick Suggestions */}
       <div className="flex gap-4 mt-8 max-w-3xl flex-wrap justify-center mx-auto">
         {QUICK_VIDEO_SUGGESTIONS.map((suggestion, index) => (
           <h2
