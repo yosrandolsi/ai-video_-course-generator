@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button"; // adapte selon ton projet
+import Link from "next/link";
 
 function Header() {
   const { user } = useUser();
@@ -24,9 +25,12 @@ function Header() {
         <li className="text-lg hover:text-primary font-medium cursor-pointer">
           Home
         </li>
-        <li className="text-lg hover:text-primary font-medium cursor-pointer">
-          Pricing
-        </li>
+        <Link href="/pricing">
+  <li className="text-lg hover:text-primary font-medium cursor-pointer">
+    Pricing
+  </li>
+</Link>
+        
       </ul>
 
       {/* Auth */}

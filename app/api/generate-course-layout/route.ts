@@ -2,14 +2,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/config/groq"; // ✅ Groq SDK
 import { COURSE_CONFIG_PROMPT } from "@/data/prompt";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth,  currentUser } from "@clerk/nextjs/server";
 import { db } from "@/config/db";
 import { coursesTable, chaptersTable } from "@/config/schema";
-
+import { eq } from "drizzle-orm";
 export async function POST(req: NextRequest) {
   try {
     // ✅ Auth user
     const user = await currentUser();
+    const {has}=await auth();
+    const isPaidUser = has({ plan: 'montly' })
+ if(!isPaidUser){
+  const userCourses = await db.select().from(coursesTable)
+    .where(eq(coursesTable.userId, user?.primaryEmailAddress?.emailAddress!));
+
+  if(userCourses?.length >= 2){
+    return NextResponse.json(
+      {msg:"You have reached the limit of free courses. Please upgrade to a paid plan to create more courses."},
+      {status:403}
+    );
+  }
+}
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
